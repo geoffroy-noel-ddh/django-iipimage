@@ -17,7 +17,8 @@ class ImageFieldFile (models.fields.files.ImageFieldFile):
             height = width = 0
             dimension_url = self.storage.full_base_url(self.name) + \
                 '&OBJ=Max-size'
-            r = requests.get(dimension_url, verify=settings.get('IMAGE_SERVER_CERT_VERIFY', True))
+            verify = getattr(settings, 'IMAGE_SERVER_CERT_VERIFY', True)
+            r = requests.get(dimension_url, verify=verify)
             matches = re.match(r'^.*?Max-size:(\d+)\s+(\d+).*?$',
                                r.text.strip())
             if matches:
