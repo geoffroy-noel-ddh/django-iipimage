@@ -1,6 +1,7 @@
 import re
 
 from django.db import models
+from django.conf import settings
 
 import requests
 
@@ -16,7 +17,7 @@ class ImageFieldFile (models.fields.files.ImageFieldFile):
             height = width = 0
             dimension_url = self.storage.full_base_url(self.name) + \
                 '&OBJ=Max-size'
-            r = requests.get(dimension_url)
+            r = requests.get(dimension_url, verify=settings.get('IMAGE_SERVER_CERT_VERIFY', True))
             matches = re.match(r'^.*?Max-size:(\d+)\s+(\d+).*?$',
                                r.text.strip())
             if matches:
