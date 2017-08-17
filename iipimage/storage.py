@@ -8,6 +8,7 @@ import uuid
 
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
+from django.utils.deconstruct import deconstructible
 
 
 # Command-line invocations of image conversion.
@@ -16,8 +17,8 @@ CONVERT_TO_JP2_LOSSLESS = 'kdu_compress -i "%s" -o "%s" -rate - Creversible=yes 
 CONVERT_TO_TIFF = 'convert -compress None %s %s'
 
 
+@deconstructible
 class ImageStorage (FileSystemStorage):
-
     """Storage class for images.
 
     When an image is saved, the original file is converted into
@@ -45,12 +46,18 @@ class ImageStorage (FileSystemStorage):
 
     """
 
-    def _save (self, name, content):
+    def __init__(self):
+        super(ImageStorage, self).__init__(
+            location=settings.IMAGE_SERVER_ROOT,
+            base_url=settings.IMAGE_SERVER_URL
+        )
+
+    def _save(self, name, content):
         name = super(ImageStorage, self)._save(name, content)
         self._convert_image(name)
         return name
 
-    def _convert_image (self, name):
+    def _convert_image(self, name):
         """Converts the image file at `name` to the preferred image
         format."""
         full_path = self.path(name)
@@ -69,7 +76,7 @@ class ImageStorage (FileSystemStorage):
         if settings.FILE_UPLOAD_PERMISSIONS is not None:
             os.chmod(full_path, settings.FILE_UPLOAD_PERMISSIONS)
 
-    def _call_image_conversion (self, command, input_path):
+    def _call_image_conversion(self, command, input_path):
         """Run the supplied image conversion `command`.
 
         Tidy up by removing the original image at `input_path`.
@@ -85,12 +92,12 @@ class ImageStorage (FileSystemStorage):
             # whether the conversion is successful or not.
             os.remove(input_path)
 
-    def full_base_url (self, name):
+    def full_base_url(self, name):
         if self.base_url is None:
             raise ValueError('This file is not accessible via a URL.')
         return '%s?FIF=%s' % (self.base_url, name)
 
-    def url (self, name):
+    def url(self, name):
         """Returns the URL where the contents of the file referenced
         by `name` can be accessed.
 
@@ -101,11 +108,15 @@ class ImageStorage (FileSystemStorage):
         return '%s&RST=*&QLT=100&CVT=JPEG' % self.full_base_url(name)
 
 
+'''
 image_storage = ImageStorage(location=settings.IMAGE_SERVER_ROOT,
                              base_url=settings.IMAGE_SERVER_URL)
+'''
+# See Django #22337 and Active Collab Archetype #82
+image_storage = ImageStorage()
 
 
-def get_image_path (instance, filename):
+def get_image_path(instance, filename):
     """Returns the upload path for a page image.
 
     The path returned is a Unix-style path with forward slashes.
@@ -146,7 +157,8 @@ def get_image_path (instance, filename):
         image_path = generate_new_image_path()
     return image_path
 
-def generate_new_image_path ():
+
+def generate_new_image_path():
     filename = str(uuid.uuid4())
     directory = filename[0]
     image_path = '%s/%s.jp2' % (directory, filename)
